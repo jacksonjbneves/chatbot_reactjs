@@ -1,0 +1,67 @@
+  .container-chat{    
+    max-width: 550px;
+    min-width: 360px;
+    height: 100%;
+  }
+
+  .card-body {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+  }
+  
+  .chat-message {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .message-bubble-user{
+    padding: 10px 15px;
+    left: 0px;
+    border-radius: 20px 20px 10px 20px;
+    max-width: 70%;    
+    word-wrap: break-word;    
+  }
+
+  .message-tip-user {
+    position: relative;    
+    top: -10px;
+    left: 0px;
+    padding: 20px 15px;
+    margin-top: 0px;
+    max-width: 70%;
+    word-wrap: break-word;
+    clip-path: polygon(0 0, 100% 0%, 100% 99%, 100% 100%);
+  }
+
+  .message-bubble-chat {
+    padding: 10px 15px;
+    border-radius: 20px 20px 20px 0px;    
+    max-width: 70%;
+    word-wrap: break-word;
+  }
+
+  .message-tip-chat {
+    position: relative;
+    top: -10px;
+    padding: 20px 15px;
+    margin-top: 0px;
+    max-width: 70%;
+    word-wrap: break-word;
+    clip-path: polygon(0 0, 100% 0%, 0 100%, 0 100%);
+  }
+  
+  /* pergunta do usuário (direita) */
+  .message-user {
+    background-color: #0d6efd; /* #0d6efd */
+    color: white;
+    align-self: flex-end;
+  }
+  
+  /* resposta do bot (esquerda) */
+  .message-bot {
+    background-color: #e9ecef;
+    color: black;
+    align-self: flex-start;
+  }
+  

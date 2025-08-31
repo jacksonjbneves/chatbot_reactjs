@@ -1,0 +1,283 @@
+import { useState, useEffect } from "react";
+import API from "../../Config/API";
+import { getToken } from "../../Utils/Auth";
+import "./Dashboard.css";
+
+export default function Dashboard() {
+  const [pergunta, setPergunta] = useState("");
+  const [resposta, setResposta] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [perguntasList, setPerguntasList] = useState([]);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [editPergunta, setEditPergunta] = useState("");
+  const [editResposta, setEditResposta] = useState("");
+  const [deleteQuestion, setDeleteQuestion] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(""); // campo de busca
+
+  // Lista perguntas ao iniciar
+  const loadPerguntas = async () => {
+    try {
+      const res = await API.get("/questchatbot", {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      setPerguntasList(res.data.reverse());
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    loadPerguntas();
+  }, []);
+
+  // Mensagem com barra progressiva
+  useEffect(() => {
+    if (message) {
+      setProgress(100);
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev <= 0) {
+            clearInterval(interval);
+            setMessage("");
+            return 0;
+          }
+          return prev - 2;
+        });
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [message]);
+
+  const showMessage = (text, type = "success") => {
+    setMessage(text);
+    setMessageType(type);
+  };
+
+  // Adicionar pergunta
+  const addQuestion = async () => {
+    try {
+      const res = await API.post(
+        "/questchatbot/pergresp",
+        { pergunta, resposta },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      showMessage("Pergunta adicionada com sucesso!", "success");
+      setPerguntasList(prev => [res.data, ...prev]);
+      setPergunta("");
+      setResposta("");
+    } catch (err) {
+      const valueError = err.response?.data?.erro;
+      (valueError === "Essa pergunta já existe!")
+        ? showMessage("Essa pergunta já existe!", "danger")
+        : showMessage("Erro ao adicionar pergunta.", "danger");
+    }
+  };
+
+  // Salvar edição
+  const saveEdit = async () => {
+    try {
+      const res = await API.put(`/questchatbot/${selectedQuestion.id}`, 
+        { pergunta: editPergunta, resposta: editResposta },
+        { headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      setPerguntasList(prev => prev.map(p => p.id === selectedQuestion.id ? res.data : p));
+      showMessage("Pergunta atualizada com sucesso!", "success");
+      setSelectedQuestion(null);
+    } catch (err) {
+      showMessage("Erro ao atualizar pergunta.", "danger");
+    }
+  };
+
+  // Confirmar exclusão
+  const confirmDelete = async () => {
+    try {
+      await API.delete(`/questchatbot/${deleteQuestion.id}`, {
+        headers: { Authorization: `Bearer ${getToken()}` }
+      });
+      setPerguntasList(prev => prev.filter(p => p.id !== deleteQuestion.id));
+      showMessage("Pergunta deletada com sucesso!", "success");
+      setDeleteQuestion(null);
+    } catch (err) {
+      showMessage("Erro ao deletar pergunta.", "danger");
+    }
+  };
+
+  // Filtragem de perguntas pelo termo buscado
+  const filteredPerguntas = perguntasList.filter(p =>
+    p.pergunta.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.resposta.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="container mt-5">
+
+      {/* Adicionar pergunta */}
+      <div className="row justify-content-center mb-5">
+        <div className="col-md-6">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h3 className="card-title text-center mb-4">Adicionar Pergunta</h3>
+
+              <div className="mb-3">
+                <label className="form-label">Pergunta</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Digite a pergunta"
+                  value={pergunta}
+                  onChange={e => setPergunta(e.target.value)}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Resposta</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Digite a resposta"
+                  value={resposta}
+                  onChange={e => setResposta(e.target.value)}
+                />
+              </div>
+
+              <button className="btn btn-primary w-100 mb-3" onClick={addQuestion}>
+                Salvar
+              </button>
+
+              {message && (
+                <div className={`alert position-relative ${messageType === "success" ? "alert-success" : "alert-danger"}`} role="alert">
+                  {message}
+                  <div style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    height: "4px",
+                    backgroundColor: messageType === "success" ? "#28a745" : "#dc3545",
+                    width: `${progress}%`,
+                    transition: "width 0.1s linear"
+                  }}></div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Campo de busca */}
+      <div className="row justify-content-center mb-4">
+        <div className="col-md-6">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h5 className="card-title text-center mb-3">Buscar Pergunta</h5>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Digite para buscar (pergunta ou resposta)..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de perguntas */}
+      <div className="row justify-content-center">
+        <div className="col-md-8">
+          <div className="card shadow-sm">
+            <div className="card-body">
+              <h3 className="card-title text-center mb-4">Perguntas Cadastradas</h3>
+
+              {filteredPerguntas.length === 0 && <p className="text-center">Nenhuma pergunta encontrada.</p>}
+
+              <ul className="list-group">
+                {filteredPerguntas.map(p => (
+                  <li key={p.id} className="list-group-item d-flex justify-content-between align-items-start sel-box mb-2">
+                    <div>
+                      <strong>P:</strong> {p.pergunta}<br/>
+                      <strong>R:</strong> {p.resposta}
+                    </div>
+                    <div className="d-flex flex-column justify-content-around align-items-center p-0 mx-1" style={{ width: "65px", height: "100px" }}> 
+                      <div className="container-fluid d-grid m-0 p-0">                        
+                        <button className="btn btn-sm btn-warning m-0" onClick={() => {
+                          setSelectedQuestion(p);
+                          setEditPergunta(p.pergunta);
+                          setEditResposta(p.resposta);
+                        }}>Editar</button>
+                      </div>
+                      <div className="container-fluid d-grid m-0 p-0">                        
+                        <button className="btn btn-sm btn-danger m-0" onClick={() => setDeleteQuestion(p)}>Deletar</button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de edição */}
+      {selectedQuestion && (
+        <div className="modal-backdrop" style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1050
+        }}>
+          <div className="card shadow p-4" style={{ width: "400px", background: "white", borderRadius: "10px" }}>
+            <h4 className="mb-3">Editar Pergunta</h4>
+            
+            <div className="mb-3">
+              <label className="form-label">Pergunta</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editPergunta}
+                onChange={(e) => setEditPergunta(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Resposta</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editResposta}
+                onChange={(e) => setEditResposta(e.target.value)}
+              />
+            </div>
+
+            <div className="d-flex justify-content-end">
+              <button className="btn btn-secondary me-2" onClick={() => setSelectedQuestion(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={saveEdit}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de exclusão */}
+      {deleteQuestion && (
+        <div className="modal-backdrop" style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          backgroundColor: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1050
+        }}>
+          <div className="card shadow p-4" style={{ width: "400px", background: "white", borderRadius: "10px" }}>
+            <h4 className="mb-3 text-danger">Excluir Pergunta</h4>
+            <p>Tem certeza que deseja excluir a pergunta abaixo?</p>
+            <p><strong>P:</strong> {deleteQuestion.pergunta}</p>
+            <p><strong>R:</strong> {deleteQuestion.resposta}</p>
+
+            <div className="d-flex justify-content-end">
+              <button className="btn btn-secondary me-2" onClick={() => setDeleteQuestion(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={confirmDelete}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

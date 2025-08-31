@@ -1,0 +1,9 @@
+.sel-box {
+  background-color: rgb(255, 255, 255); 
+  transition: 0.7s;   
+}
+
+.sel-box:hover {
+  background-color: rgb(231, 231, 231);
+  transition: 0.7s;   
+}
